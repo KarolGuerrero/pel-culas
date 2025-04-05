@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sakila - Renta de Películas</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Limelight&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/vue@2.6.14/dist/vue.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary-pink: #e83e8c;
+            --secondary-pink: #f8bbd0;
+            --light-pink: #fce4ec;
+            --dark-pink: #c2185b;
+            --accent-pink: #ff80ab;
+        }
+        
+        body {
+            background-color: #fce4ec;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        .navbar {
+            font-family: "Limelight", sans-serif;
+            background: linear-gradient(to right, var(--primary-pink), var(--dark-pink));
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        
+        .navbar-brand {
+            font-weight: bold;
+            color: white !important;
+            font-size: 1.5rem;
+        }
+        
+        .site-header {
+            background: linear-gradient(120deg, var(--primary-pink), var(--dark-pink));
+            color: white;
+            padding: 2rem 0;
+            margin-bottom: 2rem;
+            border-radius: 0 0 20px 20px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+        
+        .main-title {
+            font-family: "Limelight", sans-serif;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+        
+        .sub-title {
+            font-weight: 300;
+            opacity: 0.9;
+        }
+        
+        .card {
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.05);
+            transition: transform 0.3s, box-shadow 0.3s;
+            border: none;
+        }
+        
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 12px 20px rgba(0,0,0,0.1);
+        }
+        
+        .card-header {
+            background: linear-gradient(to right, var(--primary-pink), var(--dark-pink));
+            color: white;
+            border: none;
+            padding: 1rem 1.5rem;
+        }
+        
+        .form-label {
+            font-weight: 500;
+            color: #555;
+        }
+        
+        .form-control, .form-select {
+            border-radius: 10px;
+            padding: 0.6rem 1rem;
+            border: 1px solid #ddd;
+        }
+        
+        .form-control:focus, .form-select:focus {
+            border-color: var(--accent-pink);
+            box-shadow: 0 0 0 0.2rem rgba(232, 62, 140, 0.25);
+        }
+        
+        .btn-primary {
+            background: linear-gradient(to right, var(--primary-pink), var(--dark-pink));
+            border: none;
+            border-radius: 10px;
+            padding: 0.6rem 1.5rem;
+            font-weight: 500;
+            transition: all 0.3s;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        
+        .btn-primary:hover, .btn-primary:focus {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 8px rgba(0,0,0,0.15);
+            background: linear-gradient(to right, var(--dark-pink), var(--primary-pink));
+        }
+        
+        .btn-primary:disabled {
+            background: #aaa;
+            transform: none;
+        }
+        
+        .alert-success {
+            background-color: #a7ffeb;
+            border-color: #84ffff;
+            color: #00796b;
+        }
+        
+        .alert-danger {
+            background-color: #ffebee;
+            border-color: #ffcdd2;
+            color: #c62828;
+        }
+        
+        .fade-in {
+            animation: fadeIn 0.5s;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        
+        .film-card {
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .film-card .card-img-top {
+            height: 220px;
+            object-fit: cover;
+        }
+        
+        .film-card .card-body {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .film-card .card-title {
+            font-weight: 600;
+            color: #333;
+        }
+        
+        .film-info {
+            display: flex;
+            justify-content: space-between;
+            margin-top: auto;
+            margin-bottom: 0.5rem;
+        }
+        
+        .film-info span {
+            background-color: var(--light-pink);
+            padding: 0.2rem 0.6rem;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            color: var(--dark-pink);
+            display: inline-flex;
+            align-items: center;
+        }
+        
+        .film-info i {
+            margin-right: 0.3rem;
+        }
+        
+        .section-title {
+            position: relative;
+            color: var(--dark-pink);
+            margin-bottom: 2rem;
+            padding-bottom: 0.5rem;
+            text-align: center;
+            font-weight: 700;
+        }
+        
+        .section-title:after {
+            content: "";
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 80px;
+            height: 3px;
+            background: linear-gradient(to right, var(--primary-pink), var(--accent-pink));
+            border-radius: 2px;
+        }
+        
+        footer {
+            background: linear-gradient(to right, #333, #555);
+            color: white;
+            padding: 1.5rem 0;
+            margin-top: 3rem;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark">
+        <div class="container">
+            <a class="navbar-brand" href="#">
+                <i class="fas fa-film me-2"></i>
+                Sakila
+            </a>
+        </div>
+    </nav>
+
+    <header class="site-header">
+        <div class="container text-center">
+            <h1 class="main-title">Sistema de Renta de Películas</h1>
+            <p class="sub-title">Encuentra y renta las mejores películas con un solo clic</p>
+        </div>
+    </header>
+
+    <div id="app" class="container py-4">
+        <div class="row">
+            <div class="col-lg-6 mb-4">
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="m-0">
+                            <i class="fas fa-plus-circle me-2"></i>
+                            Nueva Renta
+                        </h3>
+                    </div>
+                    <div class="card-body">
+                        <!-- Customer Search -->
+                        <div class="mb-3">
+                            <label for="customerId" class="form-label">
+                                <i class="fas fa-user me-2"></i>
+                                Identificación del cliente:
+                            </label>
+                            <div class="input-group">
+                                <span class="input-group-text">
+                                    <i class="fas fa-id-card"></i>
+                                </span>
+                                <input 
+                                    type="number" 
+                                    class="form-control" 
+                                    id="customerId" 
+                                    v-model="customerId"
+                                    placeholder="Ingrese ID del cliente"
+                                    @input="fetchCustomer"
+                                >
+                            </div>
+                        </div>
+                
+                        <div class="mb-3">
+                            <label for="customerName" class="form-label">
+                                <i class="fas fa-user-tag me-2"></i>
+                                Nombre del cliente:
+                            </label>
+                            <div class="input-group">
+                                <span class="input-group-text">
+                                    <i class="fas fa-user-circle"></i>
+                                </span>
+                                <input 
+                                    type="text" 
+                                    class="form-control" 
+                                    id="customerName" 
+                                    v-model="customerName"
+                                    readonly
+                                    placeholder="Nombre del cliente"
+                                >
+                            </div>
+                        </div>
+
+                        <div v-if="error" class="alert alert-danger">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            {{ error }}
+                        </div>
+                        
+                        <!-- Film Selection -->
+                        <div class="mb-3">
+                            
+                            <label for="filmSelect" class="form-label">
+                                <i class="fas fa-film me-2"></i>
+                                Seleccionar tienda
+                            </label>
+                            <div class="input-group">
+                                <span class="input-group-text">
+                                    <i class="fas fa-video"></i>
+                                </span>
+                                <select class="form-select" id="filmSelect" v-model="selectedFilmId" @change="checkInventory">
+                                    <option value="">-- Seleccione una tienda --</option>
+                                    {% for film in films %}
+                                    <option value="{{ film.id }}" title="{{ film.description }}">{{ film.title }}</option>
+                                    {% endfor %}
+                                </select>
+
+                            </div>
+                            
+                            <label for="filmSelect" class="form-label">
+                                <i class="fas fa-film me-2"></i>
+                                Seleccionar película
+                            </label>
+                            <div class="input-group">
+                                <span class="input-group-text">
+                                    <i class="fas fa-video"></i>
+                                </span>
+                                <select class="form-select" id="filmSelect" v-model="selectedFilmId" @change="checkInventory">
+                                    <option value="">-- Seleccione una película --</option>
+                                    {% for film in films %}
+                                    <option value="{{ film.id }}" title="{{ film.description }}">{{ film.title }}</option>
+                                    {% endfor %}
+                                </select>
+
+                            </div>
+                            
+                            <div v-if="inventoryStatus" class="mt-2">
+                                <div v-if="inventoryStatus.available" class="alert alert-success">
+                                    <i class="fas fa-check-circle me-2"></i>
+                                    La película seleccionada está disponible
+                                </div>
+                                <div v-else class="alert alert-danger">
+                                    <i class="fas fa-times-circle me-2"></i>
+                                    Lo sentimos, esta película no está disponible
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Submit Button -->
+                        <button 
+                            class="btn btn-primary w-100" 
+                            @click="createRental"
+                            :disabled="!canCreateRental"
+                        >
+                            <i class="fas fa-check-circle me-2"></i>
+                            Crear Renta
+                        </button>
+                        
+                        <div v-if="rentalSuccessMessage" class="alert alert-success mt-3 fade-in">
+                            <i class="fas fa-check-double me-2"></i>
+                            {{ rentalSuccessMessage }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-lg-6 mb-4">
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="m-0">
+                            <i class="fas fa-info-circle me-2"></i>
+                            Información
+                        </h3>
+                    </div>
+                    <div class="card-body">
+                        <h5 class="mb-3">Cómo rentar una película:</h5>
+                        <ol class="ps-3">
+                            <li class="mb-2">Ingrese el ID del cliente</li>
+                            <li class="mb-2">Seleccione la película que desea rentar</li>
+                            <li class="mb-2">Verifique la disponibilidad</li>
+                            <li class="mb-2">Haga clic en "Crear Renta"</li>
+                        </ol>
+    
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div v-if="rentalStatus" :class="['alert', rentalStatus.success ? 'alert-success' : 'alert-danger', 'mb-4']">
+            <i :class="['fas me-2', rentalStatus.success ? 'fa-check-circle' : 'fa-exclamation-circle']"></i>
+            {{ rentalStatus.message }}
+        </div>
+        
+        <h2 class="section-title">Películas Disponibles</h2>
+        
+        <div class="row">
+            {% for film in films %}
+            <div class="col-md-3 mb-4">
+                <div class="card film-card">
+                    <div class="position-relative">
+                        <img src="{{ url_for('static', filename='Imagenes/Peliculas/' + film.image) }}" class="card-img-top" alt="{{ film.title }}">
+                        <span class="position-absolute top-0 end-0 badge bg-danger m-2">{{ film.rating }}</span>
+                    </div>
+                    <div class="card-body">
+                        <h5 class="card-title">{{ film.title }}</h5>
+                        <div class="film-info">
+                            <span><i class="fas fa-calendar-alt"></i> {{ film.year }}</span>
+                            <span><i class="fas fa-star"></i> {{ film.rating }}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <footer>
+        <div class="container text-center">
+            <p class="mb-0">&copy; 2025 Sakila Film Rental | Todos los derechos reservados</p>
+        </div>
+    </footer>
+    
+    <script>
+        new Vue({
+            el: '#app',
+            data: {
+                customerId: '',
+                customerName: '',
+                error: '',
+                films: [],
+                selectedFilmId: '',
+                selectedCustomer: null,
+                selectedInventoryId: null,
+                inventoryStatus: null,
+                rentalStatus: null,
+                rentalSuccessMessage: ''
+            },
+            computed: {
+                canCreateRental() {
+                    return this.selectedCustomer && 
+                           this.selectedFilmId && 
+                           this.inventoryStatus && 
+                           this.inventoryStatus.available &&
+                           this.selectedInventoryId;
+                }
+            },
+            methods: {
+                fetchCustomer() {
+                    if (!this.customerId) {
+                        this.customerName = '';
+                        this.selectedCustomer = null;
+                        this.error = '';
+                        return;
+                    }
+                
+                    axios.get(`/customers/${this.customerId}`)
+                        .then(response => {
+                            this.customerName = response.data.name;
+                            this.selectedCustomer = response.data;
+                            this.error = '';
+                        })
+                        .catch(error => {
+                            this.customerName = '';
+                            this.selectedCustomer = null;
+                            this.error = 'Cliente no encontrado';
+                        });
+                },
+                checkInventory() {
+                    if (!this.selectedFilmId) {
+                        this.inventoryStatus = null;
+                        this.selectedInventoryId = null;
+                        return;
+                    }
+                
+                    axios.get(`/inventory/${this.selectedFilmId}`)
+                        .then(response => {
+                            this.inventoryStatus = response.data;
+                            if (response.data.available && response.data.inventory_ids.length > 0) {
+                                this.selectedInventoryId = response.data.inventory_ids[0];
+                            } else {
+                                this.selectedInventoryId = null;
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Error verificando inventario:', error);
+                            this.inventoryStatus = null;
+                            this.selectedInventoryId = null;
+                        });
+                },
+                createRental() {
+                    if (!this.canCreateRental) return;
+                
+                    const formData = new FormData();
+                    formData.append('customer_id', this.selectedCustomer.id);
+                    formData.append('inventory_id', this.selectedInventoryId);
+                
+                    axios.post('/create_rental', formData)
+                        .then(response => {
+                            console.log('🛠 Respuesta del servidor:', response.data);
+                
+                            if (response.data.success) {
+                                this.rentalSuccessMessage = '✅ Renta creada con éxito';
+                                
+                                // Limpiar formulario
+                                setTimeout(() => {
+                                    this.customerId = '';
+                                    this.customerName = '';
+                                    this.selectedCustomer = null;
+                                    this.selectedFilmId = '';
+                                    this.inventoryStatus = null;
+                                    this.selectedInventoryId = null;
+                                    this.rentalSuccessMessage = '';
+                                }, 3000);
+                                
+                            } else {
+                                alert('❌ Error al crear la renta: ' + response.data.message);
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Error creando la renta:', error);
+                            alert('❌ Error conectando con el servidor. Intenta de nuevo.');
+                        });
+                }
+            }
+        });
+    </script>
+</body>
+</html>
