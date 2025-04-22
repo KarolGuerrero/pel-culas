@@ -10,6 +10,12 @@
     <link href="https://fonts.googleapis.com/css2?family=Limelight&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/vue@2.6.14/dist/vue.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script>
+        window.filmsFromServer = {{ films | default([]) | tojson | safe }};
+        window.storesFromServer = {{ stores | default([]) | tojson | safe }};
+        window.selectedStore = {{ selected_store | default('null') | tojson | safe }};
+    </script>    
+    
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
         :root {
@@ -280,55 +286,36 @@
                             <i class="fas fa-exclamation-triangle me-2"></i>
                             {{ error }}
                         </div>
-                        
-                        <!-- Film Selection -->
+
+                        <!-- Tienda -->
                         <div class="mb-3">
-                            
-                            <label for="filmSelect" class="form-label">
-                                <i class="fas fa-film me-2"></i>
-                                Seleccionar tienda
+                            <label for="storeSelect" class="form-label">
+                                <i class="fas fa-store me-2"></i> Seleccionar tienda
                             </label>
                             <div class="input-group">
-                                <span class="input-group-text">
-                                    <i class="fas fa-video"></i>
-                                </span>
-                                <select class="form-select" id="filmSelect" v-model="selectedFilmId" @change="checkInventory">
-                                    <option value="">-- Seleccione una tienda --</option>
-                                    {% for film in films %}
-                                    <option value="{{ film.id }}" title="{{ film.description }}">{{ film.title }}</option>
-                                    {% endfor %}
+                                <span class="input-group-text"><i class="fas fa-store-alt"></i></span>
+                                <select class="form-select" id="storeSelect" v-model="selectedStoreId" @change="fetchAvailableFilms">
+                                    <option value="">-- Selecciona una tienda --</option>
+                                    <option v-for="store in stores" :key="store" :value="store">Tienda [[ store ]]</option>
                                 </select>
-
-                            </div>
-                            
-                            <label for="filmSelect" class="form-label">
-                                <i class="fas fa-film me-2"></i>
-                                Seleccionar película
-                            </label>
-                            <div class="input-group">
-                                <span class="input-group-text">
-                                    <i class="fas fa-video"></i>
-                                </span>
-                                <select class="form-select" id="filmSelect" v-model="selectedFilmId" @change="checkInventory">
-                                    <option value="">-- Seleccione una película --</option>
-                                    {% for film in films %}
-                                    <option value="{{ film.id }}" title="{{ film.description }}">{{ film.title }}</option>
-                                    {% endfor %}
-                                </select>
-
-                            </div>
-                            
-                            <div v-if="inventoryStatus" class="mt-2">
-                                <div v-if="inventoryStatus.available" class="alert alert-success">
-                                    <i class="fas fa-check-circle me-2"></i>
-                                    La película seleccionada está disponible
-                                </div>
-                                <div v-else class="alert alert-danger">
-                                    <i class="fas fa-times-circle me-2"></i>
-                                    Lo sentimos, esta película no está disponible
-                                </div>
                             </div>
                         </div>
+
+                        <!-- Película -->
+                        <div class="mb-3">
+                            <label for="filmSelect" class="form-label">
+                                <i class="fas fa-film me-2"></i> Seleccionar película
+                            </label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fas fa-video"></i></span>
+                                <select class="form-select" id="filmSelect" v-model="selectedFilmId" @change="checkInventory">
+                                    <option value="">-- Selecciona una película --</option>
+                                    <option v-for="film in films" :key="film.film_id" :value="film.film_id">[[ film.title ]]</option>
+                                </select>
+                            </div>
+                        </div>
+
+                
                         
                         <!-- Submit Button -->
                         <button 
@@ -382,7 +369,7 @@
             <div class="col-md-3 mb-4">
                 <div class="card film-card">
                     <div class="position-relative">
-                        <img src="{{ url_for('static', filename='Imagenes/Peliculas/' + film.image) }}" class="card-img-top" alt="{{ film.title }}">
+                        <img src="{{ film.image }}" class="card-img-top" alt="{{ film.title }}">
                         <span class="position-absolute top-0 end-0 badge bg-danger m-2">{{ film.rating }}</span>
                     </div>
                     <div class="card-body">
@@ -407,11 +394,14 @@
     <script>
         new Vue({
             el: '#app',
+            delimiters: ['[[', ']]'],
             data: {
                 customerId: '',
                 customerName: '',
                 error: '',
-                films: [],
+                stores: window.storesFromServer || [],
+                selectedStoreId: window.selectedStore || '',
+                films: window.filmsFromServer || [],
                 selectedFilmId: '',
                 selectedCustomer: null,
                 selectedInventoryId: null,
@@ -421,11 +411,11 @@
             },
             computed: {
                 canCreateRental() {
-                    return this.selectedCustomer && 
-                           this.selectedFilmId && 
-                           this.inventoryStatus && 
-                           this.inventoryStatus.available &&
-                           this.selectedInventoryId;
+                    return this.selectedCustomer &&
+                        this.selectedFilmId &&
+                        this.inventoryStatus &&
+                        this.inventoryStatus.available &&
+                        this.selectedInventoryId;
                 }
             },
             methods: {
@@ -436,7 +426,7 @@
                         this.error = '';
                         return;
                     }
-                
+    
                     axios.get(`/customers/${this.customerId}`)
                         .then(response => {
                             this.customerName = response.data.name;
@@ -455,7 +445,7 @@
                         this.selectedInventoryId = null;
                         return;
                     }
-                
+    
                     axios.get(`/inventory/${this.selectedFilmId}`)
                         .then(response => {
                             this.inventoryStatus = response.data;
@@ -471,21 +461,36 @@
                             this.selectedInventoryId = null;
                         });
                 },
+                fetchAvailableFilms() {
+                    if (!this.selectedStoreId) {
+                        this.films = [];
+                        return;
+                    }
+    
+                    axios.get(`/api/films?store_id=${this.selectedStoreId}`)
+                        .then(response => {
+                            this.films = response.data;
+                            this.selectedFilmId = '';
+                            this.inventoryStatus = null;
+                            this.selectedInventoryId = null;
+                        })
+                        .catch(error => {
+                            console.error('❌ Error obteniendo películas:', error);
+                            this.films = [];
+                        });
+                },
                 createRental() {
                     if (!this.canCreateRental) return;
-                
+    
                     const formData = new FormData();
                     formData.append('customer_id', this.selectedCustomer.id);
                     formData.append('inventory_id', this.selectedInventoryId);
-                
+    
                     axios.post('/create_rental', formData)
                         .then(response => {
-                            console.log('🛠 Respuesta del servidor:', response.data);
-                
                             if (response.data.success) {
                                 this.rentalSuccessMessage = '✅ Renta creada con éxito';
-                                
-                                // Limpiar formulario
+    
                                 setTimeout(() => {
                                     this.customerId = '';
                                     this.customerName = '';
@@ -495,7 +500,6 @@
                                     this.selectedInventoryId = null;
                                     this.rentalSuccessMessage = '';
                                 }, 3000);
-                                
                             } else {
                                 alert('❌ Error al crear la renta: ' + response.data.message);
                             }
@@ -505,8 +509,14 @@
                             alert('❌ Error conectando con el servidor. Intenta de nuevo.');
                         });
                 }
+            },
+            mounted() {
+                if (this.selectedStoreId) {
+                    this.fetchAvailableFilms();
+                }
             }
         });
     </script>
+    
 </body>
 </html>
